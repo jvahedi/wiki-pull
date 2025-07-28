@@ -1,33 +1,50 @@
 import wikipediaapi
+import regex as re
 from tenacity import (
     retry,
-    stop_after_attempt,  # Added for limiting retry attempts
-    wait_exponential  # Changed from wait_fixed to wait_exponential
+    stop_after_attempt,  # Used to limit retry attempts
+    wait_exponential     # Exponential backoff for retries
 )
 
-@retry(wait=wait_exponential(multiplier=1, min=2, max=7))#, stop=stop_after_attempt(5))  # Modified retry logic
-def wikiRespond(title, pattern = ''):
+@retry(wait=wait_exponential(multiplier=1, min=2, max=7))
+def wikiRespond(title, pattern=''):
+    """
+    Fetches the text of a Wikipedia article and optionally extracts information using a regex pattern.
+
+    Args:
+        title (str): The title of the Wikipedia article to fetch.
+        pattern (str, optional): A regex pattern to extract specific information from the article text.
+            If empty, returns the full article text. Defaults to ''.
+
+    Returns:
+        str: The full article text if no pattern is provided, or the first regex match if a pattern is given.
+             Returns "NULL" if no match is found.
+
+    Raises:
+        Exception: If the Wikipedia API call fails or the page does not exist.
+    """
+    # Initialize the Wikipedia API client with a custom user agent and English language
     wiki_wiki = wikipediaapi.Wikipedia(
         user_agent='MyProjectName (merlin@example.com)',
         language='en',
         extract_format=wikipediaapi.ExtractFormat.WIKI
     )
+    # Fetch the Wikipedia page object
     p_wiki = wiki_wiki.page(title)
     
+    # Get the plain text content of the page
     html_text = p_wiki.text
     
-    # Regex pattern to find the first number (possibly with commas) after the word "population"
-    if pattern == '': 
+    # If no pattern is provided, return the full article text
+    if pattern == '':
         return html_text
-    else: 
-        #pattern = r'population\s+[^\d]*(\d{1,3}(?:,\d{3})*)(?=[^\d]*(?:\.|\s))'
-        
-        # Search for the pattern in the HTML text
+    else:
+        # Search for the pattern in the article text (case-insensitive)
         match = re.search(pattern, html_text, re.IGNORECASE)
         
-        # Print the first number found after "population" if it exists
+        # Return the first regex group if a match is found, otherwise "NULL"
         if match:
-            repond = match.group(1)
+            respond = match.group(1)
         else:
             respond = "NULL"
         return respond
